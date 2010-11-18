@@ -1,0 +1,20 @@
+
+
+@namespace("avro_testing")
+
+protocol MessageProtocol {
+   
+    record Foo_v1 {
+        string a;
+    }
+    
+    record Foo_v2 {
+        int b;
+    }
+    
+    // todo: provide a utility to convert Foo_v2 <-> Foo_v1
+    record FooMessage {
+        union {Foo_v1, Foo_v2} contents;
+    }
+    
+}

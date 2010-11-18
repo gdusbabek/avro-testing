@@ -1,0 +1,15 @@
+
+
+@namespace("avro_testing")
+
+protocol MessageProtocol {
+    
+    record Foo_v1 {
+        string a;
+    }
+    
+    record FooMessage {
+        union {Foo_v1} contents;
+    }
+    
+}

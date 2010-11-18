@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project basedir="." default="generate-avro" name="casserole">
+    <property name="basedir" value="."/>
+    <property name="src" value="${basedir}/src"/>
+    <property name="build.lib" value="${basedir}/lib"/>
+    <property name="build.dir" value="${basedir}/build"/>
+    <property name="build.classes" value="${build.dir}/classes"/>
+    
+    <path id="compile.classpath">
+        <fileset dir="${build.lib}">
+            <include name="**/*.jar"/>
+        </fileset>
+    </path>
+    
+    
+    
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${basedir}/v1-src-gen"/>
+        <delete dir="${basedir}/v2-src-gen"/>
+        <delete dir="${basedir}/v3-src-gen"/>
+    </target>
+    
+    <taskdef name="avro-protocol" classname="org.apache.avro.specific.ProtocolTask">
+        <classpath refid="compile.classpath"/>
+    </taskdef>
+    
+    <!-- 
+    this macro generates avro classes and tests serialization of older and newe data when appropriate.
+    the writeXXX methods in the individual Generate classes have been commented out (they generate the *.bin files 
+    located in ${basedir}/generated-keep.  
+    -->
+    <macrodef name="test-avro">
+        <attribute name="version"/>
+        <sequential>
+            <mkdir dir="${basedir}/v@{version}-src-gen"/>
+            <mkdir dir="${build.classes}"/>
+            <mkdir dir="${build.classes}/v@{version}"/>
+            <java classname="org.apache.avro.tool.Main" fork="true">
+                <classpath refid="compile.classpath"/>
+                <arg value="idl"/>
+                <arg value="${src}/v@{version}.genavro"/>
+                <arg value="${build.classes}/v@{version}/avro.genavro"/>
+            </java>
+            <avro-protocol destdir="${basedir}/v@{version}-src-gen">
+                <fileset file="${build.classes}/v@{version}/avro.genavro"/>
+            </avro-protocol>
+            <javac destdir="${build.classes}/v@{version}" debug="True">
+                <classpath refid="compile.classpath"/>
+                <src path="${src}"/>
+                <src path="${basedir}/v@{version}-src-gen"/>
+                <src path="${basedir}/v@{version}-src"/>
+            </javac>
+            <java classname="Generate" fork="True">
+                <classpath>
+                    <path refid="compile.classpath"/>
+                    <pathelement path="${build.classes}/v@{version}"/>
+                </classpath>
+                <jvmarg value="-ea"/>
+                <arg value="@{version}"/>
+            </java>
+        </sequential>
+    </macrodef>
+    
+    <target name="generate-avro">     
+        <test-avro version="1"/>
+        <test-avro version="2"/>
+        <test-avro version="3"/>
+    </target>
+    
+
+    
+</project>
