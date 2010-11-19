@@ -1,5 +1,4 @@
-import avro_testing.FooMessage;
-import avro_testing.Foo_v1;
+import avro_testing.Foo;
 import org.apache.avro.util.Utf8;
 
 import java.io.File;
@@ -16,14 +15,10 @@ public class Generate {
     private static void writeCurrent(String path) throws IOException {
         File f = new File(path);
         OutputStream os = new FileOutputStream(f);
-        List<FooMessage> msgs = new ArrayList<FooMessage>();
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo_v1 foo = new Foo_v1();
+            Foo foo = new Foo();
             foo.a = new Utf8(Serialize.nextBoolean() ? "1" : "0");
-            FooMessage msg = new FooMessage();
-            msg.contents = foo;
-            Serialize.serializeWithSchema(msg, os);
-            msgs.add(msg);
+            Serialize.serializeWithSchema(foo, os);
         }
         os.close();
     }
@@ -32,8 +27,8 @@ public class Generate {
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            FooMessage msg = Serialize.deserializeWithSchema(is, new FooMessage());
-            assert msg.contents instanceof Foo_v1 : path;
+            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            assert msg.a instanceof Utf8 : path;
         }
     }
      
@@ -43,7 +38,7 @@ public class Generate {
             Integer nextVersion = version+1;
             
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();
-//            writeCurrent(currentPath);
+            writeCurrent(currentPath);
             readCurrent(currentPath);
             
             // this is data written by a future version of the record. it was attempting to write in this old format.

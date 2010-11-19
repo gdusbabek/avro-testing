@@ -1,20 +1,8 @@
-
-
 @namespace("avro_testing")
 
 protocol MessageProtocol {
     
-    record Foo_v2 {
-        int b;
+    record Foo {
+        union{int, boolean} a;
     }
-    
-    record Foo_v3 {
-        boolean c;
-    }
-    
-    // todo: provide a utility to convert Foo_v2 <-> Foo_v3
-    record FooMessage {
-        union {Foo_v2, Foo_v3} contents;
-    }
-    
 }

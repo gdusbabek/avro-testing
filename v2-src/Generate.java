@@ -1,6 +1,5 @@
-import avro_testing.FooMessage;
-import avro_testing.Foo_v1;
-import avro_testing.Foo_v2;
+import avro_testing.Foo;
+import org.apache.avro.util.Utf8;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -17,14 +16,10 @@ public class Generate
     {
         File f = new File(path);
         OutputStream os = new FileOutputStream(f);
-        List<FooMessage> msgs = new ArrayList<FooMessage>();
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo_v2 foo = new Foo_v2();
-            foo.b = Serialize.nextBoolean() ? 1 : 0;
-            FooMessage msg = new FooMessage();
-            msg.contents = foo;
-            Serialize.serializeWithSchema(msg, os);
-            msgs.add(msg);
+            Foo foo = new Foo(); // v2
+            foo.a = Serialize.nextBoolean() ? 1 : 0;
+            Serialize.serializeWithSchema(foo, os);
         }
         os.close();
     }
@@ -34,9 +29,9 @@ public class Generate
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            FooMessage msg = Serialize.deserializeWithSchema(is, new FooMessage());
-            assert msg.contents instanceof Foo_v2 : path;
-            convert((Foo_v2)msg.contents);
+            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            assert msg.a instanceof Integer : path;
+            convert2to1(msg);
         }
     }
     
@@ -44,9 +39,9 @@ public class Generate
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            FooMessage msg = Serialize.deserializeWithSchema(is, new FooMessage());
-            assert msg.contents instanceof Foo_v1 : path;
-            convert((Foo_v1)msg.contents);
+            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            assert msg.a instanceof Utf8 : path;
+            convert1to2(msg);
         }
     }
     
@@ -55,11 +50,9 @@ public class Generate
         InputStream is = new FileInputStream(readPath);
         
         for (int i = 0; i < Serialize.COUNT; i++) {
-            FooMessage msg = Serialize.deserializeWithSchema(is, new FooMessage());
-            Foo_v1 v1 = convert((Foo_v2)msg.contents);
-            FooMessage msgv1 = new FooMessage();
-            msgv1.contents = v1;
-            Serialize.serializeWithSchema(msgv1, os);
+            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            Foo v1 = convert2to1(msg);
+            Serialize.serializeWithSchema(v1, os);
         }
         os.close();
         is.close();
@@ -67,16 +60,14 @@ public class Generate
     
     // example translation routines.
     
-    private static Foo_v2 convert(Foo_v1 v1) {
-        Foo_v2 v2 = new Foo_v2();
-        v2.b = Integer.parseInt(v1.a.toString());
-        return v2;
+    private static Foo convert1to2(Foo v1) {
+        v1.a = Integer.parseInt(v1.a.toString());
+        return v1;
     }
     
-    private static Foo_v1 convert(Foo_v2 v2) {
-        Foo_v1 v1 = new Foo_v1();
-        v1.a = Integer.toString(v2.b);
-        return v1;
+    private static Foo convert2to1(Foo v2) {
+        v2.a = Integer.toString((Integer)v2.a);
+        return v2;
     }
      
     public static void main(String args[]) {
@@ -86,7 +77,7 @@ public class Generate
             Integer previousVersion = version-1;
             
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();
-//            writeCurrent(currentPath);
+            writeCurrent(currentPath);
             readCurrent(currentPath);
             
             // read past
@@ -105,7 +96,7 @@ public class Generate
             
             // now write some data in the old format.
             String pastByNewPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", previousVersion, version)).getPath();
-//            writeOld(currentPath, pastByNewPath);
+            writeOld(currentPath, pastByNewPath);
             
         } catch (IOException ex) {
             ex.printStackTrace(System.err);

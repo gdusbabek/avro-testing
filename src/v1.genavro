@@ -4,12 +4,7 @@
 
 protocol MessageProtocol {
     
-    record Foo_v1 {
+    record Foo {
         string a;
     }
-    
-    record FooMessage {
-        union {Foo_v1} contents;
-    }
-    
 }
