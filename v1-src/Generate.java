@@ -18,7 +18,7 @@ public class Generate {
         for (int i = 0; i < Serialize.COUNT; i++) {
             Foo foo = new Foo();
             foo.a = new Utf8(Serialize.nextBoolean() ? "1" : "0");
-            Serialize.serializeWithSchema(foo, os);
+            Serialize.serialize(foo, os, 1);
         }
         os.close();
     }
@@ -27,7 +27,7 @@ public class Generate {
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            Foo msg = Serialize.deserialize(is, new Foo(), 1);
             assert msg.a instanceof Utf8 : path;
         }
     }
@@ -36,6 +36,11 @@ public class Generate {
         try {
             Integer version = Integer.parseInt(args[0]);
             Integer nextVersion = version+1;
+            
+            // save the current schema.
+            OutputStream os = new FileOutputStream(new File(Serialize.GENERATED_DATA, "v" + version + ".schema"));
+            os.write(new Utf8(Foo.SCHEMA$.toString()).getBytes());
+            os.close();
             
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();
             writeCurrent(currentPath);
@@ -48,6 +53,8 @@ public class Generate {
                 System.out.println("v1 can read v1 written by v2");
             }
             // no need to read old.
+            
+            System.out.println("v1 tests complete");
         } catch (IOException ex) {
             ex.printStackTrace(System.err);
             System.exit(1);

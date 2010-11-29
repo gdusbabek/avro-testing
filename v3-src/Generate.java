@@ -1,4 +1,5 @@
 import avro_testing.Foo;
+import org.apache.avro.util.Utf8;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,7 +17,7 @@ public class Generate
         for (int i = 0; i < Serialize.COUNT; i++) {
             Foo foo = new Foo();
             foo.a = Serialize.nextBoolean();
-            Serialize.serializeWithSchema(foo, os);
+            Serialize.serialize(foo, os, 3);
         }
         os.close();
     }
@@ -26,7 +27,7 @@ public class Generate
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            Foo msg = Serialize.deserialize(is, new Foo(), 3);
             assert msg.a instanceof Boolean : path;
             convert3to2(msg);
         }
@@ -36,7 +37,7 @@ public class Generate
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            Foo msg = Serialize.deserialize(is, new Foo(), 2);
             assert msg.a instanceof Integer : path;
             convert2to3(msg);
         }
@@ -47,9 +48,9 @@ public class Generate
         InputStream is = new FileInputStream(readPath);
         
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserializeWithSchema(is, new Foo());
+            Foo msg = Serialize.deserialize(is, new Foo(), 3);
             Foo v2 = convert3to2(msg);
-            Serialize.serializeWithSchema(v2, os);
+            Serialize.serialize(v2, os, 2);
         }
         os.close();
         is.close();
@@ -73,6 +74,11 @@ public class Generate
             Integer nextVersion = version+1;
             Integer previousVersion = version-1;
             
+            // save the current schema.
+            OutputStream os = new FileOutputStream(new File(Serialize.GENERATED_DATA, "v" + version + ".schema"));
+            os.write(new Utf8(Foo.SCHEMA$.toString()).getBytes());
+            os.close();
+            
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();
             writeCurrent(currentPath);
             readCurrent(currentPath);
@@ -93,6 +99,7 @@ public class Generate
             String pastByNewPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", previousVersion, version)).getPath();
             writeOld(currentPath, pastByNewPath);
             
+            System.out.println("v3 tests complete");
         } catch (IOException ex) {
             ex.printStackTrace(System.err);
             System.exit(1);

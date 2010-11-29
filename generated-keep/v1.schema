@@ -1,0 +1,1 @@
+{"type":"record","name":"Foo","namespace":"avro_testing","fields":[{"name":"a","type":"string"}]}

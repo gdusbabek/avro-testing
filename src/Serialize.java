@@ -9,32 +9,63 @@ import org.apache.avro.specific.SpecificRecord;
 import org.apache.avro.util.Utf8;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 public class Serialize {
     
-    // codecs
+    public static final File GENERATED_DATA = new File("generated-keep");
+    static {
+        GENERATED_DATA.mkdirs();
+    }
+    
+    private static final Map<Integer, Schema> SCHEMAS = new HashMap<Integer, Schema>() {{
+        put(1, getSchema(1));
+        put(2, getSchema(2));
+        put(3, getSchema(3));
+    }};
     
     private final static DecoderFactory DIRECT_DECODERS = new DecoderFactory().configureDirectDecoder(true);
     
-    public static <T extends SpecificRecord> T deserializeWithSchema(InputStream is, T ob) throws IOException {
+    private static <T extends SpecificRecord> T deserializeWithSchema(InputStream is, T ob, Schema schema) throws IOException {
         BinaryDecoder dec = DIRECT_DECODERS.createBinaryDecoder(is, null);
-        Schema writer = Schema.parse(dec.readString(new Utf8()).toString());
-        SpecificDatumReader<T> reader = new SpecificDatumReader<T>(writer);
+        SpecificDatumReader<T> reader = new SpecificDatumReader<T>(schema);
         reader.setExpected(ob.getSchema());
         return reader.read(ob, dec);
     }
 
-    public static <T extends SpecificRecord> void serializeWithSchema(T o, OutputStream os) throws IOException {
+    private static <T extends SpecificRecord> void serializeWithSchema(T o, OutputStream os, Schema schema) throws IOException {
         BinaryEncoder enc = new BinaryEncoder(os);
-        enc.writeString(new Utf8(o.getSchema().toString()));
         SpecificDatumWriter<T> writer = new SpecificDatumWriter<T>(o.getSchema());
         writer.write(o, enc);
         enc.flush();
-        return;
+    }
+    
+    public static <T extends SpecificRecord> T deserialize(InputStream is, T ob, int version) throws IOException {
+        assert schemaOk(version) : "Invalid schema " + version;
+        return deserializeWithSchema(is, ob, SCHEMAS.get(version));
+    }
+    
+    public static <T extends SpecificRecord> void serialize(T o, OutputStream os, int version) throws IOException {
+        assert schemaOk(version) : "Invalid schema " + version;
+        serializeWithSchema(o, os, SCHEMAS.get(version));
+    }
+    
+    private static Schema getSchema(int version) {
+        try {
+            return Schema.parse(new FileInputStream(new File(Serialize.GENERATED_DATA, "v" + version + ".schema")));
+        } catch (IOException ex) {
+            return null;
+        }
+    }
+    
+    public static boolean schemaOk(int version) {
+        return SCHEMAS.get(version) != null;
     }
     
     
@@ -44,10 +75,5 @@ public class Serialize {
     private static Random rand = new Random(System.currentTimeMillis());
     public static boolean nextBoolean() {
         return rand.nextBoolean();
-    }
-    
-    public static final File GENERATED_DATA = new File("generated-keep");
-    static {
-        GENERATED_DATA.mkdirs();
     }
 }
