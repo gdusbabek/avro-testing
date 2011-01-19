@@ -1,4 +1,5 @@
 
+import avro_testing.Message;
 import org.apache.avro.Schema;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.BinaryEncoder;
@@ -41,17 +42,20 @@ public class Serialize {
 
     private static <T extends SpecificRecord> void serializeWithSchema(T o, OutputStream os, Schema schema) throws IOException {
         BinaryEncoder enc = new BinaryEncoder(os);
-        SpecificDatumWriter<T> writer = new SpecificDatumWriter<T>(o.getSchema());
+        SpecificDatumWriter<T> writer = new SpecificDatumWriter<T>(schema);
         writer.write(o, enc);
         enc.flush();
     }
     
-    public static <T extends SpecificRecord> T deserialize(InputStream is, T ob, int version) throws IOException {
+    public static Message deserialize(InputStream is, Message ob, int version) throws IOException {
         assert schemaOk(version) : "Invalid schema " + version;
-        return deserializeWithSchema(is, ob, SCHEMAS.get(version));
+        Message msg = deserializeWithSchema(is, ob, SCHEMAS.get(version));
+        assert msg.version == version;
+        return msg;
     }
     
-    public static <T extends SpecificRecord> void serialize(T o, OutputStream os, int version) throws IOException {
+    public static <T extends SpecificRecord> void serialize(Message o, OutputStream os, int version) throws IOException {
+        assert o.version == version; 
         assert schemaOk(version) : "Invalid schema " + version;
         serializeWithSchema(o, os, SCHEMAS.get(version));
     }
@@ -71,7 +75,7 @@ public class Serialize {
     
     // generation utils.
     
-    public static final int COUNT = 1000;
+    public static final int COUNT = 1;
     private static Random rand = new Random(System.currentTimeMillis());
     public static boolean nextBoolean() {
         return rand.nextBoolean();

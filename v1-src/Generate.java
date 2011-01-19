@@ -1,4 +1,6 @@
+import avro_testing.Bar;
 import avro_testing.Foo;
+import avro_testing.Message;
 import org.apache.avro.util.Utf8;
 
 import java.io.File;
@@ -7,8 +9,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Generate {
     
@@ -16,9 +16,20 @@ public class Generate {
         File f = new File(path);
         OutputStream os = new FileOutputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
+            // strings, version 1
             Foo foo = new Foo();
-            foo.a = new Utf8(Serialize.nextBoolean() ? "1" : "0");
-            Serialize.serialize(foo, os, 1);
+            foo.a = new Utf8(Integer.toString(i));
+            Message fooMessage = new Message();
+            fooMessage.version = 1;
+            fooMessage.payload = foo;
+            Serialize.serialize(fooMessage, os, 1);
+            
+            Bar bar = new Bar();
+            bar.a = new Utf8(Integer.toString(i*2));
+            Message barMessage = new Message();
+            barMessage.version = 1;
+            barMessage.payload = bar;
+            Serialize.serialize(barMessage, os, 1);
         }
         os.close();
     }
@@ -27,9 +38,14 @@ public class Generate {
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserialize(is, new Foo(), 1);
-            assert msg.a instanceof Utf8 : path;
+            Message fooMessage = Serialize.deserialize(is, new Message(), 1);
+            assert fooMessage.payload instanceof Foo;
+            assert ((Foo)fooMessage.payload).a.toString().equals(Integer.toString(i)) : i + ", " + fooMessage;
+            Message barMessage = Serialize.deserialize(is, new Message(), 1);
+            assert barMessage.payload instanceof Bar;
+            assert ((Bar)barMessage.payload).a.toString().equals(Integer.toString(i*2));
         }
+        is.close();
     }
      
     public static void main(String args[]) {
@@ -39,7 +55,7 @@ public class Generate {
             
             // save the current schema.
             OutputStream os = new FileOutputStream(new File(Serialize.GENERATED_DATA, "v" + version + ".schema"));
-            os.write(new Utf8(Foo.SCHEMA$.toString()).getBytes());
+            os.write(new Utf8(Message.SCHEMA$.toString()).getBytes());
             os.close();
             
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();
@@ -52,7 +68,9 @@ public class Generate {
                 readCurrent(futurePath);
                 System.out.println("v1 can read v1 written by v2");
             }
-            // no need to read old.
+            
+            // read old
+            // no need to read old. this is v1.
             
             System.out.println("v1 tests complete");
         } catch (IOException ex) {

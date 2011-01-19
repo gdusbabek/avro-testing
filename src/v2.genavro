@@ -5,6 +5,15 @@
 protocol MessageProtocol {
     
     record Foo {
-        union{string, int} a;
+        union {string, int} a = -1;
+    }
+    
+    record Bar {
+        union {string, int} a = -2;
+    }
+    
+    record Message {
+        int version = 2;
+        union { Foo, Bar} payload;
     }
 }

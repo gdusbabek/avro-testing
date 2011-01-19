@@ -1,4 +1,6 @@
+import avro_testing.Bar;
 import avro_testing.Foo;
+import avro_testing.Message;
 import org.apache.avro.util.Utf8;
 
 import java.io.File;
@@ -17,9 +19,19 @@ public class Generate
         File f = new File(path);
         OutputStream os = new FileOutputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo foo = new Foo(); // v2
-            foo.a = Serialize.nextBoolean() ? 1 : 0;
-            Serialize.serialize(foo, os, 2);
+            Foo foo = new Foo();
+            foo.a = i;
+            Message fooMessage = new Message();
+            fooMessage.version = 2;
+            fooMessage.payload = foo;
+            Serialize.serialize(fooMessage, os, 2);
+            
+            Bar bar = new Bar();
+            bar.a = i*2;
+            Message barMessage = new Message();
+            barMessage.version = 2;
+            barMessage.payload = bar;
+            Serialize.serialize(barMessage, os, 2);
         }
         os.close();
     }
@@ -29,20 +41,69 @@ public class Generate
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserialize(is, new Foo(), 2);
-            assert msg.a instanceof Integer : path;
-            convert2to1(msg);
+            Message fooMessage = Serialize.deserialize(is, new Message(), 2);
+            assert fooMessage.payload instanceof Foo;
+            assert (Integer)((Foo)fooMessage.payload).a == i;
+            
+            Message barMessage = Serialize.deserialize(is, new Message(), 2);
+            assert barMessage.payload instanceof Bar;
+            assert (Integer)((Bar)barMessage.payload).a == i*2;
         }
+    }
+    
+    private static Message translate2to1(Message v2)
+    {
+        assert v2.version == 2;
+        if (v2.payload instanceof Foo)
+        {
+            Foo f = (Foo)v2.payload;
+            f.a = Integer.toString((Integer)f.a);
+        }
+        else if (v2.payload instanceof Bar)
+        {
+            Bar b = (Bar)v2.payload;
+            b.a = Integer.toString((Integer)b.a);
+        }
+        else
+            throw new AssertionError("Couldn't translate");
+        v2.version = 1;
+        return v2;
+    }
+    
+    private static Message translate1to2(Message v1)
+    {
+        assert v1.version == 1;
+        if (v1.payload instanceof Foo)
+        {
+            Foo f = (Foo)v1.payload;
+            f.a = Integer.parseInt(f.a.toString());
+        }
+        else if (v1.payload instanceof Bar)
+        {
+            Bar b = (Bar)v1.payload;
+            b.a = Integer.parseInt(b.a.toString());
+        }
+        v1.version = 2;
+        return v1;
     }
     
     private static void readOld(String path) throws IOException {
         File f = new File(path);
         InputStream is = new FileInputStream(f);
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserialize(is, new Foo(), 1);
-            assert msg.a instanceof Utf8 : path;
-            convert1to2(msg);
+            Message fooMessage = Serialize.deserialize(is, new Message(), 1);
+            assert fooMessage.payload instanceof Foo;
+            assert ((Foo)fooMessage.payload).a instanceof Utf8;
+            fooMessage = translate1to2(fooMessage);
+            assert (Integer)((Foo)fooMessage.payload).a == i;
+            
+            Message barMessage = Serialize.deserialize(is, new Message(), 1);
+            assert barMessage.payload instanceof Bar;
+            assert ((Bar)barMessage.payload).a instanceof Utf8;
+            barMessage = translate1to2(barMessage);
+            assert (Integer)((Bar)barMessage.payload).a == i*2;
         }
+        is.close();
     }
     
     private static void writeOld(String readPath, String writePath) throws IOException {
@@ -50,26 +111,26 @@ public class Generate
         InputStream is = new FileInputStream(readPath);
         
         for (int i = 0; i < Serialize.COUNT; i++) {
-            Foo msg = Serialize.deserialize(is, new Foo(), 2);
-            Foo v1 = convert2to1(msg);
-            Serialize.serialize(v1, os, 1);
+            Foo f = new Foo();
+            f.a = i;
+            Message fooMsg = new Message();
+            fooMsg.version = 2;
+            fooMsg.payload = f;
+            fooMsg = translate2to1(fooMsg);
+            Serialize.serialize(fooMsg, os, 1);
+            
+            Bar b = new Bar();
+            b.a = i*2;
+            Message barMsg = new Message();
+            barMsg.version = 2;
+            barMsg.payload = b;
+            barMsg = translate2to1(barMsg);
+            Serialize.serialize(barMsg, os, 1);
         }
         os.close();
         is.close();
     }
     
-    // example translation routines.
-    
-    private static Foo convert1to2(Foo v1) {
-        v1.a = Integer.parseInt(v1.a.toString());
-        return v1;
-    }
-    
-    private static Foo convert2to1(Foo v2) {
-        v2.a = Integer.toString((Integer)v2.a);
-        return v2;
-    }
-     
     public static void main(String args[]) {
         try {
             Integer version = Integer.parseInt(args[0]);
@@ -78,7 +139,7 @@ public class Generate
             
             // save the current schema.
             OutputStream os = new FileOutputStream(new File(Serialize.GENERATED_DATA, "v" + version + ".schema"));
-            os.write(new Utf8(Foo.SCHEMA$.toString()).getBytes());
+            os.write(new Utf8(Message.SCHEMA$.toString()).getBytes());
             os.close();
             
             String currentPath = new File(Serialize.GENERATED_DATA, String.format("v%d-by-%d.bin", version, version)).getPath();

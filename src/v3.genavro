@@ -5,4 +5,17 @@ protocol MessageProtocol {
     record Foo {
         union{int, boolean} a;
     }
+    
+    record Bar {
+        union {int, boolean} a = true;
+    }
+    
+    record LikeFoo {
+        boolean a = true;
+    }
+    
+    record Message {
+        int version = 3;
+        union { Foo, Bar, LikeFoo } payload;
+    }
 }

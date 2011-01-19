@@ -1,1 +1,1 @@
-{"type":"record","name":"Foo","namespace":"avro_testing","fields":[{"name":"a","type":"string"}]}
+{"type":"record","name":"Message","namespace":"avro_testing","fields":[{"name":"version","type":"int","default":1},{"name":"payload","type":[{"type":"record","name":"Foo","fields":[{"name":"a","type":"string","default":"undefined"}]},{"type":"record","name":"Bar","fields":[{"name":"a","type":"string","default":"still undefined"}]}]}]}

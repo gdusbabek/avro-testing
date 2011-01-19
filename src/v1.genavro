@@ -5,6 +5,15 @@
 protocol MessageProtocol {
     
     record Foo {
-        string a;
+        string a = "undefined";
+    }
+    
+    record Bar {
+        string a = "still undefined";
+    }
+    
+    record Message {
+        int version = 1;
+        union { Foo, Bar} payload;
     }
 }
